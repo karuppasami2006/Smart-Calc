@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartCalc - Scientific Calculator</title>
+  <style>
+    :root{
+      --bg:#f9f9f9;
+      --calc:#111;
+      --btn:#222;
+      --btn-hover:#444;
+      --text:#fff;
+      --accent:#000;
+      --input-bg:#fff;
+      --input-text:#000;
+    }
+    body.dark{
+      --bg:#000;
+      --calc:#fff;
+      --btn:#ddd;
+      --btn-hover:#bbb;
+      --text:#000;
+      --accent:#fff;
+      --input-bg:#000;
+      --input-text:#fff;
+    }
+
+    body{
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      display:flex; align-items:center; justify-content:center;
+      min-height:100vh; margin:0;
+      background:var(--bg);
+      transition: background .3s ease, color .3s ease;
+    }
+
+    .theme-toggle{
+      position:fixed; top:14px; right:18px;
+      background:var(--accent); color:var(--bg);
+      border:none; padding:8px 12px; border-radius:8px; cursor:pointer;
+      font-size:.9rem; transition:opacity .2s ease, transform .2s ease;
+    }
+    .theme-toggle:hover{ opacity:.9; transform:translateY(-1px); }
+
+    .calculator{
+      width:360px; max-width:92vw;
+      background:var(--calc);
+      color:var(--text);
+      padding:22px;
+      border-radius:20px;
+      box-shadow:0 10px 28px rgba(0,0,0,.35);
+      transition: background .3s ease, color .3s ease;
+    }
+
+    h2{ margin:0 0 16px 0; text-align:center; }
+
+    .display-wrap{ margin-bottom:16px; }
+    #result{
+      width:100%; height:70px;
+      text-align:right;
+      padding:14px;
+      font-size:1.6rem;
+      border:none; border-radius:12px;
+      background:var(--input-bg); color:var(--input-text);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,.18);
+      box-sizing:border-box;
+    }
+
+    .buttons{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    button{
+      padding:18px 0; font-size:1rem; border:none; border-radius:12px; cursor:pointer;
+      background:var(--btn); color:var(--text);
+      transition:transform .15s ease, box-shadow .15s ease, background .2s ease, color .2s ease;
+    }
+    button:hover{ background:var(--btn-hover); transform:translateY(-2px); }
+    .span-two{ grid-column:span 2; }
+    .equal{ background:var(--input-bg); color:var(--input-text); font-weight:700; }
+    .muted{ opacity:.85; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+
+  <div class="calculator">
+    <h2>SmartCalc</h2>
+
+    <div class="display-wrap">
+      <input type="text" id="result" disabled />
+    </div>
+
+    <div class="buttons">
+      <button class="muted" onclick="clearResult()">C</button>
+      <button class="muted" onclick="deleteLast()">DEL</button>
+      <button class="muted" onclick="append('%')">%</button>
+      <button class="muted" onclick="append('/')">÷</button>
+
+      <button onclick="append('7')">7</button>
+      <button onclick="append('8')">8</button>
+      <button onclick="append('9')">9</button>
+      <button class="muted" onclick="append('*')">×</button>
+
+      <button onclick="append('4')">4</button>
+      <button onclick="append('5')">5</button>
+      <button onclick="append('6')">6</button>
+      <button class="muted" onclick="append('-')">−</button>
+
+      <button onclick="append('1')">1</button>
+      <button onclick="append('2')">2</button>
+      <button onclick="append('3')">3</button>
+      <button class="muted" onclick="append('+')">+</button>
+
+      <button onclick="append('0')" class="span-two">0</button>
+      <button onclick="append('.')">.</button>
+      <button class="equal" onclick="calculate()">=</button>
+
+      <button onclick="appendFunc('sin(')">sin</button>
+      <button onclick="appendFunc('cos(')">cos</button>
+      <button onclick="appendFunc('tan(')">tan</button>
+      <button onclick="appendFunc('sqrt(')">√</button>
+
+      <button class="muted" onclick="append('(')">(</button>
+      <button class="muted" onclick="append(')')">)</button>
+      <button class="muted" onclick="append('**')">xʸ</button>
+      <button class="muted" onclick="append('Math.PI')">π</button>
+    </div>
+  </div>
+
+  <script>
+    const result = document.getElementById('result');
+    const funcTokens = ["sin(", "cos(", "tan(", "sqrt("];
+
+    function append(v){ result.value += v; }
+    function appendFunc(f){ result.value += f; }
+    function clearResult(){ result.value = ""; }
+
+    function deleteLast(){
+      for(const t of funcTokens){
+        if(result.value.endsWith(t)){ result.value = result.value.slice(0, -t.length); return; }
+      }
+      result.value = result.value.slice(0, -1);
+    }
+
+    function normalizeExpression(expr){
+      expr = expr.replace(/×/g,'*').replace(/÷/g,'/');
+      expr = expr.replace(/sqrt\(/g, 'Math.sqrt(')
+                 .replace(/√\(/g, 'Math.sqrt(')
+                 .replace(/√\s*([0-9.]+)/g, 'Math.sqrt($1)');
+      expr = expr.replace(/sin\(/g,'Math.sin(')
+                 .replace(/cos\(/g,'Math.cos(')
+                 .replace(/tan\(/g,'Math.tan(');
+      expr = expr.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+      const opens = (expr.match(/\(/g)||[]).length;
+      const closes = (expr.match(/\)/g)||[]).length;
+      if(closes < opens) expr += ')'.repeat(opens - closes);
+      return expr;
+    }
+
+    function calculate(){
+      try{
+        const expr = normalizeExpression(result.value);
+        const out = eval(expr);
+        result.value = Number.isFinite(out) ? out : "Error";
+      }catch{ result.value = "Error"; }
+    }
+
+    function toggleTheme(){
+      document.body.classList.toggle('dark');
+      document.querySelector('.theme-toggle').textContent =
+        document.body.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
+    }
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key.match(/[0-9+\-*/%.]/)) append(event.key);
+      else if (event.key === "Enter") calculate();
+      else if (event.key === "Backspace") deleteLast();
+    });
+  </script>
+</body>
+</html>
